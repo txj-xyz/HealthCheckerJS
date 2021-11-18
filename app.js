@@ -1,61 +1,122 @@
-const { Webhook, MessageBuilder } = require('discord-webhook-node');
+const { MessageEmbed, WebhookClient } = require('discord.js');
 const axios = require('axios');
-const { webhookUrl, healthUrl, timeout, interval, errorMessage } = process.env;
-const envObject = {
-    webhookUrl: webhookUrl,
-    healthUrl: healthUrl,
-    timeout: timeout,
-    interval: interval,
-    errorMessage: errorMessage
-};
+const { webhookUrl, healthUrl, timeout, interval, statusPageUrl, errorMessage, successMessage } = process.env;
+let lastMessage = "";
 
-if(!webhookUrl || !healthUrl || !timeout || !interval || !errorMessage) throw new Error('No ENV Values set');
+// console.log('ENV SETTINGS: ', JSON.stringify(process.env, null, 2))
 
-console.log('ENV SETTINGS: ', JSON.stringify(envObject, null, 2))
+if(!webhookUrl &&
+    !healthUrl &&
+    !timeout && 
+    !interval &&
+    !errorMessage &&
+    !statusPageUrl &&
+    !successMessage &&
+    !successMessageLink
+    ) throw new Error('No ENV Values set');
 
 
-// When the script intially runs we need to fire off the Check event to alert immediately upon deployment.
-const webhookClient = new Webhook(webhookUrl);
-axios.get(healthUrl, { timeout: Number(timeout) * 1000 })
-.then(res => {
+// Start WebhookClient
+const webhookClient = new WebhookClient({ url: webhookUrl });
+
+// INITIALIZE MESSAGE
+axios.get(healthUrl, { timeout: timeout })
+.then(async res => {
     console.log(`Status Code ${res.status} OK`)
-    const initialEmbed = new MessageBuilder()
-    .setTitle("Lavalink Server is ONLINE.")
-    .setURL("https://statuspage.freshping.io/58439-txbroxannebot")
+
+    const onlineEmbed = new MessageEmbed()
+    .setTitle(successMessage)
+    .setURL(statusPageUrl)
     .setDescription(`Checking again in ${interval} minutes.`)
     .setColor('#00ff00')
     .setFooter('Powered by Kubernetes!')
     .setTimestamp();
-    webhookClient.send(initialEmbed);
+    
+    if(lastMessage.length < 1 ) {
+        webhookClient.send({
+            embeds: [onlineEmbed],
+        }).then(response => {
+            console.log(response.id)
+            lastMessage = response.id
+        });
+    } else {
+        await webhookClient.editMessage(lastMessage, {
+            embeds: [onlineEmbed],
+        });
+    }
 })
-.catch(err => {
-    console.log('DOWN: ', err.message);
-    // Send out the embed when the page is at an error
-    const embedDown = new MessageBuilder()
-    .setTitle(errorMessage)
-    .setURL(healthUrl)
-    .setDescription(`Checking again in ${interval} minutes.`)
-    .setColor('#ff0000')
-    .setFooter('Powered by Kubernetes!')
-    .setTimestamp();
-    webhookClient.send(embedDown);
-})
-
-// Start the timer based on ENV options for uptime check.
-setInterval(() => {
-    axios.get(healthUrl, { timeout: Number(timeout) * 1000 })
-    .then(res => console.log(`Status Code ${res.status} OK`))
-    .catch(err => {
-        console.log('DOWN: ', err.message);
-
-        // Send out the embed when the page is at an error
-        const embed = new MessageBuilder()
+.catch(async (err) => {
+    console.log('OFFLINE - ERROR')
+    
+    const offlineEmbed = new MessageEmbed()
         .setTitle(errorMessage)
-        .setURL(healthUrl)
+        .setURL(statusPageUrl)
         .setDescription(`Checking again in ${interval} minutes.`)
         .setColor('#ff0000')
         .setFooter('Powered by Kubernetes!')
         .setTimestamp();
-        webhookClient.send(embed);
+
+    if(lastMessage.length < 1) {
+        webhookClient.send({
+            content: "@everyone",
+            embeds: [offlineEmbed],
+        }).then(response => { lastMessage = response.id });
+    } else {
+        await webhookClient.editMessage(lastMessage, {
+            content: "@everyone",
+            embeds: [offlineEmbed],
+        });
+    }
+})
+
+
+setInterval( async () => {
+    axios.get(healthUrl, { timeout: timeout })
+    .then(async res => {
+        console.log(`Status Code ${res.status} OK`)
+
+        const onlineEmbed = new MessageEmbed()
+        .setTitle(successMessage)
+        .setURL(statusPageUrl)
+        .setDescription(`Checking again in ${interval} minutes.`)
+        .setColor('#00ff00')
+        .setFooter('Powered by Kubernetes!')
+        .setTimestamp();
+        
+        if(lastMessage.length < 1 ) {
+            webhookClient.send({
+                embeds: [onlineEmbed],
+            }).then(response => {
+                console.log(response.id)
+                lastMessage = response.id
+            });
+        } else {
+            await webhookClient.editMessage(lastMessage, {
+                embeds: [onlineEmbed],
+            });
+        }
     })
-}, Number(interval) * 60000);
+    .catch(async () => {
+        console.log('OFFLINE - ERROR')
+        
+        const offlineEmbed = new MessageEmbed()
+            .setTitle(errorMessage)
+            .setURL(statusPageUrl)
+            .setDescription(`Checking again in ${interval} minutes.`)
+            .setColor('#ff0000')
+            .setFooter('Powered by Kubernetes!')
+            .setTimestamp();
+    
+        if(lastMessage.length < 1) {
+            webhookClient.send({
+                content: "@everyone",
+                embeds: [offlineEmbed],
+            }).then(response => { lastMessage = response.id });
+        } else {
+            await webhookClient.editMessage(lastMessage, {
+                content: "@everyone",
+                embeds: [offlineEmbed],
+            });
+        }
+    })
+}, interval * 60000);
