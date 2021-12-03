@@ -32,18 +32,9 @@ axios.get(healthUrl, { timeout: timeout })
     .setFooter('Powered by Kubernetes!')
     .setTimestamp();
     
-    if(lastMessage.length < 1 ) {
-        webhookClient.send({
-            embeds: [onlineEmbed],
-        }).then(response => {
-            console.log(response.id)
-            lastMessage = response.id
-        });
-    } else {
-        await webhookClient.editMessage(lastMessage, {
-            embeds: [onlineEmbed],
-        });
-    }
+    webhookClient.send({
+        embeds: [onlineEmbed],
+    })
 })
 .catch(async (err) => {
     console.log('OFFLINE - ERROR')
@@ -56,17 +47,10 @@ axios.get(healthUrl, { timeout: timeout })
         .setFooter('Powered by Kubernetes!')
         .setTimestamp();
 
-    if(lastMessage.length < 1) {
-        webhookClient.send({
-            content: "@everyone",
-            embeds: [offlineEmbed],
-        }).then(response => { lastMessage = response.id });
-    } else {
-        await webhookClient.editMessage(lastMessage, {
-            content: "@everyone",
-            embeds: [offlineEmbed],
-        });
-    }
+    webhookClient.send({
+        content: "Detected Down State",
+        embeds: [offlineEmbed],
+    });
 })
 
 
@@ -83,18 +67,9 @@ setInterval( async () => {
         .setFooter('Powered by Kubernetes!')
         .setTimestamp();
         
-        if(lastMessage.length < 1 ) {
-            webhookClient.send({
-                embeds: [onlineEmbed],
-            }).then(response => {
-                console.log(response.id)
-                lastMessage = response.id
-            });
-        } else {
-            await webhookClient.editMessage(lastMessage, {
-                embeds: [onlineEmbed],
-            });
-        }
+        webhookClient.send({
+            embeds: [onlineEmbed],
+        });
     })
     .catch(async () => {
         console.log('OFFLINE - ERROR')
@@ -107,16 +82,9 @@ setInterval( async () => {
             .setFooter('Powered by Kubernetes!')
             .setTimestamp();
     
-        if(lastMessage.length < 1) {
-            webhookClient.send({
-                content: "@everyone",
-                embeds: [offlineEmbed],
-            }).then(response => { lastMessage = response.id });
-        } else {
-            await webhookClient.editMessage(lastMessage, {
-                content: "@everyone",
-                embeds: [offlineEmbed],
-            });
-        }
+        webhookClient.send({
+            content: "Detected Down State",
+            embeds: [offlineEmbed],
+        });
     })
 }, interval * 60000);
