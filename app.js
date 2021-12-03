@@ -1,8 +1,7 @@
 const { MessageEmbed, WebhookClient } = require('discord.js');
 const axios = require('axios');
 const { webhookUrl, healthUrl, timeout, interval, statusPageUrl, errorMessage, successMessage } = process.env;
-let lastMessage = "";
-
+let downState = false;
 // console.log('ENV SETTINGS: ', JSON.stringify(process.env, null, 2))
 
 if(!webhookUrl &&
@@ -20,14 +19,14 @@ if(!webhookUrl &&
 const webhookClient = new WebhookClient({ url: webhookUrl });
 
 // INITIALIZE MESSAGE
+
 axios.get(healthUrl, { timeout: timeout })
 .then(async res => {
-    console.log(`Status Code ${res.status} OK`)
+    console.log(`Status Code ${res.status} OK`);
 
     const onlineEmbed = new MessageEmbed()
     .setTitle(successMessage)
     .setURL(statusPageUrl)
-    .setDescription(`Checking again in ${interval} minutes.`)
     .setColor('#00ff00')
     .setFooter('Powered by Kubernetes!')
     .setTimestamp();
@@ -37,54 +36,46 @@ axios.get(healthUrl, { timeout: timeout })
     })
 })
 .catch(async (err) => {
-    console.log('OFFLINE - ERROR')
-    
+    console.log('OFFLINE - ERROR');
+    downState = true;
     const offlineEmbed = new MessageEmbed()
         .setTitle(errorMessage)
         .setURL(statusPageUrl)
-        .setDescription(`Checking again in ${interval} minutes.`)
         .setColor('#ff0000')
         .setFooter('Powered by Kubernetes!')
         .setTimestamp();
 
     webhookClient.send({
-        content: "Detected Down State",
         embeds: [offlineEmbed],
     });
 })
 
-
+// Interval Checking
 setInterval( async () => {
     axios.get(healthUrl, { timeout: timeout })
     .then(async res => {
-        console.log(`Status Code ${res.status} OK`)
-
+        console.log(`Status Code ${res.status} OK`);
         const onlineEmbed = new MessageEmbed()
         .setTitle(successMessage)
         .setURL(statusPageUrl)
-        .setDescription(`Checking again in ${interval} minutes.`)
         .setColor('#00ff00')
         .setFooter('Powered by Kubernetes!')
         .setTimestamp();
-        
-        webhookClient.send({
-            embeds: [onlineEmbed],
-        });
+        if(downState == true){
+            webhookClient.send({ embeds: [onlineEmbed], });
+            downState = false;
+        }
     })
     .catch(async () => {
-        console.log('OFFLINE - ERROR')
-        
+        console.log('OFFLINE - ERROR');
+        downState = true;
         const offlineEmbed = new MessageEmbed()
             .setTitle(errorMessage)
             .setURL(statusPageUrl)
-            .setDescription(`Checking again in ${interval} minutes.`)
             .setColor('#ff0000')
             .setFooter('Powered by Kubernetes!')
             .setTimestamp();
     
-        webhookClient.send({
-            content: "Detected Down State",
-            embeds: [offlineEmbed],
-        });
+        webhookClient.send({ embeds: [offlineEmbed], });
     })
 }, interval * 60000);
