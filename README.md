@@ -1,4 +1,4 @@
-# Discord.js Health Check Monitor
+# Node.js Health Check Monitor
 
 This package uses Discord.js Webhook#send and Webhook#edit functions to monitor and endpoint, this cna be useful for montioring a health check, please read through the code if you have any questions.
 
